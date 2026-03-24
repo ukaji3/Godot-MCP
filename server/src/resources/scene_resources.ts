@@ -5,7 +5,7 @@ import { z } from 'zod';
 /**
  * Resource that provides a list of all scenes in the project
  */
-export const sceneListResource: Resource = {
+export const sceneListResource: Resource<any> = {
   uri: 'godot/scenes',
   name: 'Godot Scene List',
   mimeType: 'application/json',
@@ -43,7 +43,7 @@ export const sceneListResource: Resource = {
 /**
  * Resource that provides detailed information about a specific scene
  */
-export const sceneStructureResource: Resource = {
+export const sceneStructureResource: Resource<any> = {
     uri: 'godot/scene/current',
     name: 'Godot Scene Structure',
     mimeType: 'application/json',

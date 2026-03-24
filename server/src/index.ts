@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { FastMCP } from 'fastmcp';
 import { nodeTools } from './tools/node_tools.js';
 import { scriptTools } from './tools/script_tools.js';

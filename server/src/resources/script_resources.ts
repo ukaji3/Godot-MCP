@@ -6,7 +6,7 @@ import { z } from 'zod';
  * Resource that provides the content of a specific script
  * Note: As a Resource (not ResourceTemplate), it cannot handle dynamic paths
  */
-export const scriptResource: Resource = {
+export const scriptResource: Resource<any> = {
     uri: 'godot/script',
     name: 'Godot Script Content',
     mimeType: 'text/plain',
@@ -40,7 +40,7 @@ export const scriptResource: Resource = {
 /**
  * Resource that provides a list of all scripts in the project
  */
-export const scriptListResource: Resource = {
+export const scriptListResource: Resource<any> = {
   uri: 'godot/scripts',
   name: 'Godot Script List',
   mimeType: 'application/json',
@@ -82,7 +82,7 @@ export const scriptListResource: Resource = {
 /**
  * Resource that provides metadata for a specific script, including classes and methods
  */
-export const scriptMetadataResource: Resource = {
+export const scriptMetadataResource: Resource<any> = {
     uri: 'godot/script/metadata',
     name: 'Godot Script Metadata',
     mimeType: 'application/json',
