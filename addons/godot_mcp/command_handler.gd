@@ -6,15 +6,9 @@ var _websocket_server
 var _command_processors = []
 
 func _ready():
-	print("Command handler initializing...")
 	await get_tree().process_frame
 	_websocket_server = get_parent()
-	print("WebSocket server reference set: ", _websocket_server)
-	
-	# Initialize command processors
 	_initialize_command_processors()
-	
-	print("Command handler initialized and ready to process commands")
 
 func _initialize_command_processors():
 	# Create and add all command processors
@@ -54,8 +48,6 @@ func _handle_command(client_id: int, command: Dictionary) -> void:
 	var params = command.get("params", {})
 	var command_id = command.get("commandId", "")
 	
-	print("Processing command: %s" % command_type)
-	
 	# Try each processor until one handles the command
 	for processor in _command_processors:
 		if processor.process_command(client_id, command_type, params, command_id):
@@ -74,4 +66,4 @@ func _send_error(client_id: int, message: String, command_id: String) -> void:
 		response["commandId"] = command_id
 	
 	_websocket_server.send_response(client_id, response)
-	print("Error: %s" % message)
+	printerr("[MCP] %s" % message)

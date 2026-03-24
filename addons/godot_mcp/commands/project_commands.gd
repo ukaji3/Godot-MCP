@@ -28,7 +28,6 @@ func _get_project_info(client_id: int, _params: Dictionary, command_id: String) 
 	
 	# Get Godot version info and structure it as expected by the server
 	var version_info = Engine.get_version_info()
-	print("Raw Godot version info: ", version_info)
 	
 	# Create structured version object with the expected properties
 	var structured_version = {

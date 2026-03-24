@@ -4,8 +4,7 @@ extends EditorPlugin
 var tcp_server := TCPServer.new()
 var port := 9080
 var handshake_timeout := 3000 # ms
-var debug_mode := true
-var log_detailed := true  # Enable detailed logging
+var log_detailed := false  # Verbose logging (disabled by default)
 var command_handler = null  # Command handler reference
 
 signal client_connected(id)
@@ -37,27 +36,25 @@ func _enter_tree():
 	# Store plugin instance for EditorInterface access
 	Engine.set_meta("GodotMCPPlugin", self)
 	
-	print("\n=== MCP SERVER STARTING ===")
+	print("[MCP] Server starting...")
 	
 	# Initialize the command handler
-	print("Creating command handler...")
 	command_handler = preload("res://addons/godot_mcp/command_handler.gd").new()
 	command_handler.name = "CommandHandler"
 	add_child(command_handler)
 	
 	# Connect signals
-	print("Connecting command handler signals...")
 	self.connect("command_received", Callable(command_handler, "_handle_command"))
 	
 	# Start WebSocket server
 	var err = tcp_server.listen(port)
 	if err == OK:
-		print("Listening on port", port)
+		print("[MCP] Listening on port %d" % port)
 		set_process(true)
 	else:
-		printerr("Failed to listen on port", port, "error:", err)
+		printerr("[MCP] Failed to listen on port %d (error: %d)" % [port, err])
 	
-	print("=== MCP SERVER INITIALIZED ===\n")
+	print("[MCP] Server initialized")
 
 func _exit_tree():
 	# Remove plugin instance from Engine metadata
@@ -69,11 +66,11 @@ func _exit_tree():
 	
 	clients.clear()
 	
-	print("=== MCP SERVER SHUTDOWN ===")
+	print("[MCP] Server shutdown")
 
 func _log(client_id, message):
 	if log_detailed:
-		print("[Client ", client_id, "] ", message)
+		print("[MCP Client %d] %s" % [client_id, message])
 
 func _process(_delta):
 	if not tcp_server.is_listening():
@@ -88,13 +85,13 @@ func _process(_delta):
 		var client = WebSocketClient.new(tcp, id)
 		clients[id] = client
 		
-		print("[Client ", id, "] New TCP connection")
+		_log(id, "New TCP connection")
 		
 		# Try to upgrade immediately
 		if client.upgrade_to_websocket():
-			print("[Client ", id, "] WebSocket handshake started")
+			_log(id, "WebSocket handshake started")
 		else:
-			print("[Client ", id, "] Failed to start WebSocket handshake")
+			printerr("[MCP Client %d] Failed to start WebSocket handshake" % id)
 			clients.erase(id)
 	
 	# Update clients
@@ -113,11 +110,10 @@ func _process(_delta):
 				
 				# Check WebSocket state
 				var ws_state = client.ws.get_ready_state()
-				if debug_mode:
-					_log(id, "State: " + str(ws_state))
+				_log(id, "State: " + str(ws_state))
 					
 				if ws_state == WebSocketPeer.STATE_OPEN:
-					print("[Client ", id, "] WebSocket handshake completed")
+					_log(id, "WebSocket handshake completed")
 					client.state = 0
 					
 					# Emit connected signal
@@ -131,23 +127,23 @@ func _process(_delta):
 					client.ws.send_text(msg)
 					
 				elif ws_state != WebSocketPeer.STATE_CONNECTING:
-					print("[Client ", id, "] WebSocket handshake failed, state: ", ws_state)
+					_log(id, "WebSocket handshake failed, state: %d" % ws_state)
 					ids_to_remove.append(id)
 				
 				# Check for handshake timeout
 				elif current_time - client.handshake_time > handshake_timeout:
-					print("[Client ", id, "] WebSocket handshake timed out")
+					_log(id, "WebSocket handshake timed out")
 					ids_to_remove.append(id)
 			else:
 				# If TCP is still connected, try upgrading
 				if client.tcp.get_status() == StreamPeerTCP.STATUS_CONNECTED:
 					if client.upgrade_to_websocket():
-						print("[Client ", id, "] WebSocket handshake started")
+						_log(id, "WebSocket handshake started")
 					else:
-						print("[Client ", id, "] Failed to start WebSocket handshake")
+						printerr("[MCP Client %d] Failed to start WebSocket handshake" % id)
 						ids_to_remove.append(id)
 				else:
-					print("[Client ", id, "] TCP disconnected during handshake")
+					_log(id, "TCP disconnected during handshake")
 					ids_to_remove.append(id)
 		
 		elif client.state == 0: # Connected
@@ -157,7 +153,7 @@ func _process(_delta):
 			# Check state
 			var ws_state = client.ws.get_ready_state()
 			if ws_state != WebSocketPeer.STATE_OPEN:
-				print("[Client ", id, "] WebSocket connection closed, state: ", ws_state)
+				_log(id, "WebSocket connection closed, state: %d" % ws_state)
 				emit_signal("client_disconnected", id)
 				ids_to_remove.append(id)
 				continue
@@ -167,30 +163,27 @@ func _process(_delta):
 				var packet = client.ws.get_packet()
 				var text = packet.get_string_from_utf8()
 				
-				print("[Client ", id, "] RECEIVED RAW DATA: ", text)
+				_log(id, "RECV: " + text)
 				
 				# Parse as JSON
 				var json = JSON.new()
 				var parse_result = json.parse(text)
-				_log(id, "JSON parse result: " + str(parse_result))
 				
 				if parse_result == OK:
 					var data = json.get_data()
-					_log(id, "Parsed JSON: " + str(data))
 					
 					# Handle JSON-RPC protocol
 					if data.has("jsonrpc") and data.get("jsonrpc") == "2.0":
 						# Handle ping method
 						if data.has("method") and data.get("method") == "ping":
-							print("[Client ", id, "] Received PING with id: ", data.get("id"))
 							var response = {
 								"jsonrpc": "2.0",
 								"id": data.get("id"),
 								"result": null  # FastMCP expects null result for pings
 							}
 							var response_text = JSON.stringify(response)
-							var send_result = client.ws.send_text(response_text)
-							print("[Client ", id, "] SENDING PING RESPONSE: ", response_text, " (result: ", send_result, ")")
+							client.ws.send_text(response_text)
+							_log(id, "PING response sent")
 						
 						# Handle other MCP commands
 						elif data.has("method"):
@@ -198,7 +191,7 @@ func _process(_delta):
 							var params = data.get("params", {})
 							var req_id = data.get("id")
 							
-							print("[Client ", id, "] Processing JSON-RPC method: ", method_name)
+							_log(id, "JSON-RPC method: " + method_name)
 							
 							# For now, just send a generic success response
 							# TODO: Route these to command handler as well
@@ -212,22 +205,18 @@ func _process(_delta):
 							}
 							
 							var response_text = JSON.stringify(response)
-							var send_result = client.ws.send_text(response_text)
-							print("[Client ", id, "] SENT RESPONSE: ", response_text, " (result: ", send_result, ")")
+							client.ws.send_text(response_text)
+							_log(id, "SENT: " + response_text)
 					
 					# Handle legacy command format - This is what Claude Code uses
 					elif data.has("type"):
 						var cmd_type = data.get("type")
-						var params = data.get("params", {})
-						var cmd_id = data.get("commandId", "")
-						
-						print("[Client ", id, "] Processing command: ", cmd_type)
+						_log(id, "Command: " + cmd_type)
 						
 						# Route command to command handler via signal
-						# The command handler will handle the response via send_response
 						emit_signal("command_received", id, data)
 				else:
-					print("[Client ", id, "] Failed to parse JSON: ", json.get_error_message())
+					printerr("[MCP Client %d] Failed to parse JSON: %s" % [id, json.get_error_message()])
 	
 	# Remove clients that need to be removed
 	for id in ids_to_remove:
@@ -236,21 +225,21 @@ func _process(_delta):
 # Function for command handler to send responses back to clients
 func send_response(client_id: int, response: Dictionary) -> int:
 	if not clients.has(client_id):
-		print("Error: Client %d not found" % client_id)
+		printerr("[MCP] Client %d not found" % client_id)
 		return ERR_DOES_NOT_EXIST
 	
 	var client = clients[client_id]
 	var json_text = JSON.stringify(response)
 	
-	print("Sending response to client %d: %s" % [client_id, json_text])
+	_log(client_id, "SEND: " + json_text)
 	
 	if client.ws.get_ready_state() != WebSocketPeer.STATE_OPEN:
-		print("Error: Client %d connection not open" % client_id)
+		printerr("[MCP] Client %d connection not open" % client_id)
 		return ERR_UNAVAILABLE
 	
 	var result = client.ws.send_text(json_text)
 	if result != OK:
-		print("Error sending response to client %d: %d" % [client_id, result])
+		printerr("[MCP] Failed to send to client %d (error: %d)" % [client_id, result])
 	
 	return result
 
@@ -261,7 +250,7 @@ func stop_server() -> void:
 	if is_server_active():
 		tcp_server.stop()
 		clients.clear()
-		print("MCP WebSocket server stopped")
+		print("[MCP] Server stopped")
 		
 func get_port() -> int:
 	return port

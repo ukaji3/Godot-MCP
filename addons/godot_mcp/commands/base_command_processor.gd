@@ -46,20 +46,19 @@ func _send_error(client_id: int, message: String, command_id: String) -> void:
 	# Send to websocket if available
 	if _websocket_server:
 		_websocket_server.send_response(client_id, response)
-	print("Error: %s" % message)
+	printerr("[MCP] %s" % message)
 
 # Common utility methods
 func _get_editor_node(path: String) -> Node:
 	var plugin = Engine.get_meta("GodotMCPPlugin")
 	if not plugin:
-		print("GodotMCPPlugin not found in Engine metadata")
+		printerr("[MCP] GodotMCPPlugin not found in Engine metadata")
 		return null
 		
 	var editor_interface = plugin.get_editor_interface()
 	var edited_scene_root = editor_interface.get_edited_scene_root()
 	
 	if not edited_scene_root:
-		print("No edited scene found")
 		return null
 		
 	# Handle absolute paths
@@ -78,7 +77,6 @@ func _get_editor_node(path: String) -> Node:
 func _mark_scene_modified() -> void:
 	var plugin = Engine.get_meta("GodotMCPPlugin")
 	if not plugin:
-		print("GodotMCPPlugin not found in Engine metadata")
 		return
 	
 	var editor_interface = plugin.get_editor_interface()
@@ -92,7 +90,6 @@ func _mark_scene_modified() -> void:
 func _get_undo_redo():
 	var plugin = Engine.get_meta("GodotMCPPlugin")
 	if not plugin or not plugin.has_method("get_undo_redo"):
-		print("Cannot access UndoRedo from plugin")
 		return null
 		
 	return plugin.get_undo_redo()
@@ -127,12 +124,11 @@ func _parse_property_value(value):
 		if error == OK:
 			var result = expression.execute([], null, true)
 			if not expression.has_execute_failed():
-				print("Successfully parsed %s as %s" % [value, result])
 				return result
 			else:
-				print("Failed to execute expression for: %s" % value)
+				pass  # Expression execution failed
 		else:
-			print("Failed to parse expression: %s (Error: %d)" % [value, error])
+			pass  # Expression parse failed
 	
 	# Resource path — load as actual resource
 	if typeof(value) == TYPE_STRING and value.begins_with("res://"):

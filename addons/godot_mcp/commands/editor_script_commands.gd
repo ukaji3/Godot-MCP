@@ -59,7 +59,6 @@ func custom_print(values):
 	print(output_str)  # Still print to the console for debugging
 
 func run():
-	print("Executing script... ready func")
 	_parent = get_parent()
 	var scene = get_tree().edited_scene_root
 	
@@ -145,8 +144,6 @@ func _on_script_execution_completed(script_node: Node, client_id: int, command_i
 		"success": error_message.is_empty(),
 		"output": output
 	}
-
-	print("result_data: ", result_data)
 	
 	if not error_message.is_empty():
 		result_data["error"] = error_message

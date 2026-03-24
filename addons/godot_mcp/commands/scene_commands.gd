@@ -103,7 +103,6 @@ func _get_current_scene(client_id: int, _params: Dictionary, command_id: String)
 	var edited_scene_root = editor_interface.get_edited_scene_root()
 	
 	if not edited_scene_root:
-		print("No scene is currently being edited")
 		# Instead of returning an error, return a valid response with empty/default values
 		_send_success(client_id, {
 			"scene_path": "None",
@@ -115,10 +114,6 @@ func _get_current_scene(client_id: int, _params: Dictionary, command_id: String)
 	var scene_path = edited_scene_root.scene_file_path
 	if scene_path.is_empty():
 		scene_path = "Untitled"
-	
-	print("Current scene path: ", scene_path)
-	print("Root node type: ", edited_scene_root.get_class())
-	print("Root node name: ", edited_scene_root.name)
 	
 	_send_success(client_id, {
 		"scene_path": scene_path,
