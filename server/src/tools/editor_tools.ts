@@ -1,9 +1,13 @@
 import { z } from 'zod';
 import { getGodotConnection } from '../utils/godot_connection.js';
-import { MCPTool } from '../utils/types.js';
+import { MCPTool, CommandResult } from '../utils/types.js';
 
 interface ExecuteEditorScriptParams {
   code: string;
+}
+
+interface GetDebugOutputParams {
+  lines: number;
 }
 
 export const editorTools: MCPTool[] = [
@@ -20,7 +24,6 @@ export const editorTools: MCPTool[] = [
       try {
         const result = await godot.sendCommand('execute_editor_script', { code });
         
-        // Format output for display
         let outputText = 'Script executed successfully';
         
         if (result.output && Array.isArray(result.output) && result.output.length > 0) {
@@ -34,6 +37,31 @@ export const editorTools: MCPTool[] = [
         return outputText;
       } catch (error) {
         throw new Error(`Script execution failed: ${(error as Error).message}`);
+      }
+    },
+  },
+
+  {
+    name: 'get_debug_output',
+    description: 'Get recent debug output and error logs from Godot. Reads the latest log file to capture print() output, warnings, and runtime errors.',
+    parameters: z.object({
+      lines: z.number().default(50)
+        .describe('Number of recent log lines to return (default: 50)'),
+    }),
+    execute: async ({ lines }: GetDebugOutputParams): Promise<string> => {
+      const godot = getGodotConnection();
+      
+      try {
+        const result = await godot.sendCommand<CommandResult>('get_debug_output', { lines });
+        
+        if (!result.lines || result.lines.length === 0) {
+          return 'No log output available.';
+        }
+        
+        const header = `Log file: ${result.log_file}\nShowing last ${result.lines.length} of ${result.total_lines} lines:\n`;
+        return header + '\n' + result.lines.join('\n');
+      } catch (error) {
+        throw new Error(`Failed to get debug output: ${(error as Error).message}`);
       }
     },
   },

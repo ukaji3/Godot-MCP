@@ -13,6 +13,9 @@ func process_command(client_id: int, command_type: String, params: Dictionary, c
 		"create_resource":
 			_create_resource(client_id, params, command_id)
 			return true
+		"get_debug_output":
+			_get_debug_output(client_id, params, command_id)
+			return true
 	return false  # Command not handled
 
 func _get_editor_state(client_id: int, params: Dictionary, command_id: String) -> void:
@@ -157,4 +160,57 @@ func _create_resource(client_id: int, params: Dictionary, command_id: String) ->
 	_send_success(client_id, {
 		"resource_path": resource_path,
 		"resource_type": resource_type
+	}, command_id)
+
+func _get_debug_output(client_id: int, params: Dictionary, command_id: String) -> void:
+	var lines = params.get("lines", 50)
+	
+	# Find the log directory
+	var log_dir = ProjectSettings.globalize_path("user://logs/")
+	if not DirAccess.dir_exists_absolute(log_dir):
+		return _send_error(client_id, "Log directory not found: %s" % log_dir, command_id)
+	
+	# Find the most recent .log file
+	var dir = DirAccess.open(log_dir)
+	if not dir:
+		return _send_error(client_id, "Cannot open log directory", command_id)
+	
+	var latest_file := ""
+	var latest_time := 0
+	dir.list_dir_begin()
+	var fname = dir.get_next()
+	while fname != "":
+		if fname.ends_with(".log"):
+			var full_path = log_dir + fname
+			var mod_time = FileAccess.get_modified_time(full_path)
+			if mod_time > latest_time:
+				latest_time = mod_time
+				latest_file = full_path
+		fname = dir.get_next()
+	dir.list_dir_end()
+	
+	if latest_file.is_empty():
+		return _send_success(client_id, {"log_file": "", "lines": [], "total_lines": 0}, command_id)
+	
+	# Read the file and return last N lines
+	var file = FileAccess.open(latest_file, FileAccess.READ)
+	if not file:
+		return _send_error(client_id, "Cannot open log file: %s" % latest_file, command_id)
+	
+	var all_lines: PackedStringArray = file.get_as_text().split("\n")
+	file = null
+	
+	# Remove trailing empty line from split
+	if all_lines.size() > 0 and all_lines[-1] == "":
+		all_lines.resize(all_lines.size() - 1)
+	
+	var start = max(0, all_lines.size() - lines)
+	var result_lines: Array[String] = []
+	for i in range(start, all_lines.size()):
+		result_lines.append(all_lines[i])
+	
+	_send_success(client_id, {
+		"log_file": latest_file,
+		"lines": result_lines,
+		"total_lines": all_lines.size()
 	}, command_id)
