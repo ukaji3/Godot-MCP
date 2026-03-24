@@ -134,5 +134,11 @@ func _parse_property_value(value):
 		else:
 			print("Failed to parse expression: %s (Error: %d)" % [value, error])
 	
+	# Resource path — load as actual resource
+	if typeof(value) == TYPE_STRING and value.begins_with("res://"):
+		var loaded = load(value)
+		if loaded:
+			return loaded
+	
 	# Otherwise, return value as is
 	return value

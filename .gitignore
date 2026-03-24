@@ -34,3 +34,5 @@ __pycache__/
 *.swp
 *~
 .~lock.*
+
+.kiro/
