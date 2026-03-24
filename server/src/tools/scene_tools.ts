@@ -105,6 +105,22 @@ export const sceneTools: MCPTool[] = [
   },
 
   {
+    name: 'get_full_scene_tree',
+    description: 'Get the full hierarchical scene tree of the currently edited scene, including node names, types, paths, and scripts',
+    parameters: z.object({}),
+    execute: async (): Promise<string> => {
+      const godot = getGodotConnection();
+      
+      try {
+        const result = await godot.sendCommand<CommandResult>('get_full_scene_tree', {});
+        return `Scene: ${result.scene_path}\n\n${JSON.stringify(result.tree, null, 2)}`;
+      } catch (error) {
+        throw new Error(`Failed to get scene tree: ${(error as Error).message}`);
+      }
+    },
+  },
+
+  {
     name: 'get_project_info',
     description: 'Get information about the current Godot project',
     parameters: z.object({}),

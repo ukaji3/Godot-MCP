@@ -13,6 +13,9 @@ func process_command(client_id: int, command_type: String, params: Dictionary, c
 		"get_current_scene":
 			_get_current_scene(client_id, params, command_id)
 			return true
+		"get_full_scene_tree":
+			_get_full_scene_tree(client_id, params, command_id)
+			return true
 		"get_scene_structure":
 			_get_scene_structure(client_id, params, command_id)
 			return true
@@ -279,3 +282,42 @@ func _create_scene(client_id: int, params: Dictionary, command_id: String) -> vo
 		"scene_path": path,
 		"root_node_type": root_node_type
 	}, command_id)
+
+func _get_full_scene_tree(client_id: int, _params: Dictionary, command_id: String) -> void:
+	var plugin = Engine.get_meta("GodotMCPPlugin")
+	if not plugin:
+		return _send_error(client_id, "GodotMCPPlugin not found", command_id)
+	
+	var edited_scene_root = plugin.get_editor_interface().get_edited_scene_root()
+	if not edited_scene_root:
+		return _send_error(client_id, "No scene is currently being edited", command_id)
+	
+	_send_success(client_id, {
+		"scene_path": edited_scene_root.scene_file_path,
+		"tree": _build_tree(edited_scene_root, edited_scene_root)
+	}, command_id)
+
+func _build_tree(node: Node, scene_root: Node) -> Dictionary:
+	var rel_path = str(scene_root.get_path_to(node))
+	if rel_path == ".":
+		rel_path = node.name
+	
+	var data := {
+		"name": node.name,
+		"type": node.get_class(),
+		"path": rel_path,
+	}
+	
+	var script = node.get_script()
+	if script:
+		data["script"] = script.resource_path
+	
+	var children := []
+	for child in node.get_children():
+		if child.owner == scene_root or child == scene_root:
+			children.append(_build_tree(child, scene_root))
+	
+	if children.size() > 0:
+		data["children"] = children
+	
+	return data
