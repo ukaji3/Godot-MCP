@@ -10,6 +10,10 @@ interface GetDebugOutputParams {
   lines: number;
 }
 
+interface GetClassInfoParams {
+  class_name: string;
+}
+
 export const editorTools: MCPTool[] = [
   {
     name: 'execute_editor_script',
@@ -46,7 +50,11 @@ If unsure what methods are available, introspect at runtime:
 - Run game: \`EditorInterface.play_main_scene()\`
 - Stop game: \`EditorInterface.stop_playing_scene()\`
 - Change editor setting: \`EditorInterface.get_editor_settings().set("setting", value)\`
-- Set project setting: \`ProjectSettings.set_setting("key", value)\``,
+- Set project setting: \`ProjectSettings.set_setting("key", value)\`
+
+## IMPORTANT
+NEVER assume a Godot operation is impossible. Almost all engine and editor operations have programmatic APIs.
+If unsure, call \`get_class_info\` to check available methods, or \`search_godot_docs\` to find the relevant class.`,
     parameters: z.object({
       code: z.string()
         .describe('GDScript code to execute in the editor context'),
@@ -89,6 +97,24 @@ If unsure what methods are available, introspect at runtime:
         return header + '\n' + result.lines.join('\n');
       } catch (error) {
         throw new Error(`Failed to get debug output: ${(error as Error).message}`);
+      }
+    },
+  },
+
+  {
+    name: 'get_class_info',
+    description: `Query Godot's ClassDB for methods, properties, and signals of any engine class. Use this to verify what APIs are available before writing execute_editor_script code or concluding an operation is impossible.`,
+    parameters: z.object({
+      class_name: z.string()
+        .describe('Godot class name (e.g. "VisualShader", "EditorInterface", "AnimationPlayer")'),
+    }),
+    execute: async ({ class_name }: GetClassInfoParams): Promise<string> => {
+      const godot = getGodotConnection();
+      try {
+        const result = await godot.sendCommand('get_class_info', { class_name });
+        return JSON.stringify(result, null, 2);
+      } catch (error) {
+        throw new Error(`Failed to get class info: ${(error as Error).message}`);
       }
     },
   },

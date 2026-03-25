@@ -16,6 +16,9 @@ func process_command(client_id: int, command_type: String, params: Dictionary, c
 		"get_debug_output":
 			_get_debug_output(client_id, params, command_id)
 			return true
+		"get_class_info":
+			_get_class_info(client_id, params, command_id)
+			return true
 	return false  # Command not handled
 
 func _get_editor_state(client_id: int, params: Dictionary, command_id: String) -> void:
@@ -217,3 +220,45 @@ func _get_debug_output(client_id: int, params: Dictionary, command_id: String) -
 		"lines": result_lines,
 		"total_lines": all_lines.size()
 	}, command_id)
+
+func _get_class_info(client_id: int, params: Dictionary, command_id: String) -> void:
+	var class_name_param: String = params.get("class_name", "")
+	if class_name_param.is_empty():
+		return _send_error(client_id, "class_name is required", command_id)
+	
+	if not ClassDB.class_exists(class_name_param):
+		return _send_error(client_id, "Class not found: %s" % class_name_param, command_id)
+	
+	var result = {
+		"class_name": class_name_param,
+		"parent": ClassDB.get_parent_class(class_name_param),
+		"is_instantiable": ClassDB.can_instantiate(class_name_param),
+	}
+	
+	# Methods
+	var methods := []
+	for m in ClassDB.class_get_method_list(class_name_param, true):
+		var args := []
+		for a in m.get("args", []):
+			args.append(a["name"] + ":" + type_string(a["type"]))
+		methods.append({
+			"name": m["name"],
+			"args": args,
+			"return": type_string(m["return"]["type"]) if m.has("return") else "void"
+		})
+	result["methods"] = methods
+	
+	# Properties
+	var properties := []
+	for p in ClassDB.class_get_property_list(class_name_param, true):
+		if not p["name"].begins_with("_"):
+			properties.append({"name": p["name"], "type": type_string(p["type"])})
+	result["properties"] = properties
+	
+	# Signals
+	var signals := []
+	for s in ClassDB.class_get_signal_list(class_name_param, true):
+		signals.append(s["name"])
+	result["signals"] = signals
+	
+	_send_success(client_id, result, command_id)
