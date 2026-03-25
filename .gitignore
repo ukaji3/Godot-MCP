@@ -39,3 +39,6 @@ __pycache__/
 
 # Documentation index (generated, large)
 server/data/
+
+# Editor/IDE settings
+.vscode/
