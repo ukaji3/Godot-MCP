@@ -65,9 +65,10 @@ func _scan_directory(dir: DirAccess, path: String, extensions: Array, files: Arr
 	
 	while file_name != "":
 		if dir.current_is_dir():
-			var subdir = DirAccess.open("res://" + path + file_name)
-			if subdir:
-				_scan_directory(subdir, path + file_name + "/", extensions, files)
+			if not file_name.begins_with("."):
+				var subdir = DirAccess.open("res://" + path + file_name)
+				if subdir:
+					_scan_directory(subdir, path + file_name + "/", extensions, files)
 		else:
 			var file_path = path + file_name
 			var has_valid_extension = extensions.is_empty()
@@ -105,12 +106,13 @@ func _analyze_project_structure(dir: DirAccess, path: String, structure: Diction
 	
 	while file_name != "":
 		if dir.current_is_dir():
-			var dir_path = path + file_name + "/"
-			structure["directories"].append("res://" + dir_path)
-			
-			var subdir = DirAccess.open("res://" + dir_path)
-			if subdir:
-				_analyze_project_structure(subdir, dir_path, structure)
+			if not file_name.begins_with("."):
+				var dir_path = path + file_name + "/"
+				structure["directories"].append("res://" + dir_path)
+				
+				var subdir = DirAccess.open("res://" + dir_path)
+				if subdir:
+					_analyze_project_structure(subdir, dir_path, structure)
 		else:
 			structure["total_files"] += 1
 			
@@ -182,9 +184,10 @@ func _scan_resources(dir: DirAccess, path: String, resources: Dictionary) -> voi
 	
 	while file_name != "":
 		if dir.current_is_dir():
-			var subdir = DirAccess.open("res://" + path + file_name)
-			if subdir:
-				_scan_resources(subdir, path + file_name + "/", resources)
+			if not file_name.begins_with("."):
+				var subdir = DirAccess.open("res://" + path + file_name)
+				if subdir:
+					_scan_resources(subdir, path + file_name + "/", resources)
 		else:
 			var file_path = "res://" + path + file_name
 			

@@ -13,7 +13,8 @@ interface CreateScriptParams {
 
 interface EditScriptParams {
   script_path: string;
-  content: string;
+  content?: string;
+  replacements?: { old: string; new: string }[];
 }
 
 interface GetScriptParams {
@@ -68,22 +69,33 @@ export const scriptTools: MCPTool[] = [
 
   {
     name: 'edit_script',
-    description: 'Edit an existing GDScript file',
+    description: `Edit a GDScript file. Two modes:
+1. Full replacement: provide "content" to replace the entire file.
+2. Search-and-replace: provide "replacements" array with {old, new} pairs. Each "old" must match exactly once in the file.`,
     parameters: z.object({
       script_path: z.string()
-        .describe('Path to the script file to edit (e.g. "res://scripts/player.gd")'),
-      content: z.string()
-        .describe('New content of the script'),
+        .describe('Path to the script file (e.g. "res://scripts/player.gd")'),
+      content: z.string().optional()
+        .describe('Full replacement content (omit if using replacements)'),
+      replacements: z.array(z.object({
+        old: z.string().describe('Exact text to find (must be unique in file)'),
+        new: z.string().describe('Replacement text'),
+      })).optional()
+        .describe('Search-and-replace pairs (omit if using content)'),
     }),
-    execute: async ({ script_path, content }: EditScriptParams): Promise<string> => {
+    execute: async ({ script_path, content, replacements }: EditScriptParams): Promise<string> => {
       const godot = getGodotConnection();
       
       try {
-        await godot.sendCommand('edit_script', {
-          script_path,
-          content,
-        });
+        const params: Record<string, any> = { script_path };
+        if (replacements) params.replacements = replacements;
+        else if (content) params.content = content;
         
+        const result = await godot.sendCommand('edit_script', params);
+        
+        if (replacements) {
+          return `Applied ${result.replacements_applied} replacement(s) to ${script_path}`;
+        }
         return `Updated script at ${script_path}`;
       } catch (error) {
         throw new Error(`Failed to edit script: ${(error as Error).message}`);

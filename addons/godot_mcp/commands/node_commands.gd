@@ -205,21 +205,21 @@ func _get_node_properties(client_id: int, params: Dictionary, command_id: String
 func _list_nodes(client_id: int, params: Dictionary, command_id: String) -> void:
 	var parent_path = params.get("parent_path", "/root")
 	
-	# Get the parent node using the editor node helper
 	var parent = _get_editor_node(parent_path)
 	if not parent:
 		return _send_error(client_id, "Parent node not found: %s" % parent_path, command_id)
 	
-	# Get children
 	var plugin = Engine.get_meta("GodotMCPPlugin")
 	var scene_root = plugin.get_editor_interface().get_edited_scene_root() if plugin else null
+	if not scene_root:
+		return _send_error(client_id, "No scene is currently being edited", command_id)
+	
 	var children = []
 	for child in parent.get_children():
-		var child_path = str(scene_root.get_path_to(child)) if scene_root else child.name
 		children.append({
 			"name": child.name,
 			"type": child.get_class(),
-			"path": child_path
+			"path": str(scene_root.get_path_to(child))
 		})
 	
 	_send_success(client_id, {
@@ -247,11 +247,17 @@ func _update_node_transform(client_id: int, params: Dictionary, command_id: Stri
 	
 	if params.has("position"):
 		var pos = params["position"]
+		if not pos is Array:
+			return _send_error(client_id, "position must be an array", command_id)
+		var expected = 2 if node is Node2D else 3
+		if pos.size() != expected:
+			return _send_error(client_id, "position requires %d elements for %s" % [expected, node.get_class()], command_id)
+		var new_pos = Vector2(pos[0], pos[1]) if node is Node2D else Vector3(pos[0], pos[1], pos[2])
 		if undo_redo:
-			undo_redo.add_do_property(node, "position", Vector2(pos[0], pos[1]) if node is Node2D else Vector3(pos[0], pos[1], pos[2]))
+			undo_redo.add_do_property(node, "position", new_pos)
 			undo_redo.add_undo_property(node, "position", node.position)
 		else:
-			node.position = Vector2(pos[0], pos[1]) if node is Node2D else Vector3(pos[0], pos[1], pos[2])
+			node.position = new_pos
 		updated.append("position")
 	
 	if params.has("rotation"):
@@ -260,6 +266,8 @@ func _update_node_transform(client_id: int, params: Dictionary, command_id: Stri
 		if node is Node2D:
 			new_rot = float(rot)
 		elif rot is Array:
+			if rot.size() != 3:
+				return _send_error(client_id, "rotation requires 3 elements for Node3D", command_id)
 			new_rot = Vector3(rot[0], rot[1], rot[2])
 		else:
 			new_rot = Vector3(float(rot), 0, 0)
@@ -272,11 +280,17 @@ func _update_node_transform(client_id: int, params: Dictionary, command_id: Stri
 	
 	if params.has("scale"):
 		var scl = params["scale"]
+		if not scl is Array:
+			return _send_error(client_id, "scale must be an array", command_id)
+		var expected = 2 if node is Node2D else 3
+		if scl.size() != expected:
+			return _send_error(client_id, "scale requires %d elements for %s" % [expected, node.get_class()], command_id)
+		var new_scl = Vector2(scl[0], scl[1]) if node is Node2D else Vector3(scl[0], scl[1], scl[2])
 		if undo_redo:
-			undo_redo.add_do_property(node, "scale", Vector2(scl[0], scl[1]) if node is Node2D else Vector3(scl[0], scl[1], scl[2]))
+			undo_redo.add_do_property(node, "scale", new_scl)
 			undo_redo.add_undo_property(node, "scale", node.scale)
 		else:
-			node.scale = Vector2(scl[0], scl[1]) if node is Node2D else Vector3(scl[0], scl[1], scl[2])
+			node.scale = new_scl
 		updated.append("scale")
 	
 	if updated.is_empty():

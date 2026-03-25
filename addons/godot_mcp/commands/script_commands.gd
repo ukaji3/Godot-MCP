@@ -108,38 +108,61 @@ func _create_script(client_id: int, params: Dictionary, command_id: String) -> v
 func _edit_script(client_id: int, params: Dictionary, command_id: String) -> void:
 	var script_path = params.get("script_path", "")
 	var content = params.get("content", "")
+	var replacements = params.get("replacements", [])
 	
-	# Validation
 	if script_path.is_empty():
 		return _send_error(client_id, "Script path cannot be empty", command_id)
 	
-	if content.is_empty():
-		return _send_error(client_id, "Content cannot be empty", command_id)
+	if content.is_empty() and replacements.is_empty():
+		return _send_error(client_id, "Either content or replacements must be provided", command_id)
 	
-	# Make sure we have an absolute path
 	if not script_path.begins_with("res://"):
 		script_path = "res://" + script_path
 	
-	# Check if the file exists
 	if not FileAccess.file_exists(script_path):
 		return _send_error(client_id, "Script file not found: %s" % script_path, command_id)
 	
-	# Edit the script file
-	var file = FileAccess.open(script_path, FileAccess.WRITE)
-	if file == null:
+	var new_content: String
+	
+	if not replacements.is_empty():
+		# Search-and-replace mode
+		var file_r = FileAccess.open(script_path, FileAccess.READ)
+		if file_r == null:
+			return _send_error(client_id, "Failed to read script: %s" % script_path, command_id)
+		new_content = file_r.get_as_text()
+		file_r = null
+		
+		var applied := 0
+		for r in replacements:
+			if not r is Dictionary or not r.has("old") or not r.has("new"):
+				return _send_error(client_id, "Each replacement must have 'old' and 'new' fields", command_id)
+			var old_text: String = r["old"]
+			var new_text: String = r["new"]
+			if new_content.find(old_text) == -1:
+				return _send_error(client_id, "Text not found in script: %s" % old_text.left(80), command_id)
+			if new_content.count(old_text) > 1:
+				return _send_error(client_id, "Ambiguous match (%d occurrences): %s" % [new_content.count(old_text), old_text.left(80)], command_id)
+			new_content = new_content.replace(old_text, new_text)
+			applied += 1
+	else:
+		# Full replacement mode
+		new_content = content
+	
+	var file_w = FileAccess.open(script_path, FileAccess.WRITE)
+	if file_w == null:
 		return _send_error(client_id, "Failed to open script file: %s" % script_path, command_id)
 	
-	file.store_string(content)
-	file = null  # Close the file
+	file_w.store_string(new_content)
+	file_w = null
 	
-	# Refresh the filesystem so the editor picks up changes
 	var plugin = Engine.get_meta("GodotMCPPlugin")
 	if plugin:
 		plugin.get_editor_interface().get_resource_filesystem().scan()
 	
-	_send_success(client_id, {
-		"script_path": script_path
-	}, command_id)
+	var result = {"script_path": script_path}
+	if not replacements.is_empty():
+		result["replacements_applied"] = replacements.size()
+	_send_success(client_id, result, command_id)
 
 func _get_script(client_id: int, params: Dictionary, command_id: String) -> void:
 	var script_path = params.get("script_path", "")

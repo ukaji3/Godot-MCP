@@ -49,9 +49,10 @@ func _get_editor_state(client_id: int, params: Dictionary, command_id: String) -
 	var selected_nodes = selection.get_selected_nodes()
 	
 	for node in selected_nodes:
+		var rel_path = str(edited_scene_root.get_path_to(node)) if edited_scene_root else node.name
 		state["selected_nodes"].append({
 			"name": node.name,
-			"path": str(node.get_path())
+			"path": rel_path
 		})
 	
 	_send_success(client_id, state, command_id)
@@ -72,14 +73,16 @@ func _get_selected_node(client_id: int, params: Dictionary, command_id: String) 
 			"message": "No node is currently selected"
 		}, command_id)
 	
-	var node = selected_nodes[0]  # Get the first selected node
+	var node = selected_nodes[0]
 	
-	# Get node info
+	var edited_scene_root = editor_interface.get_edited_scene_root()
+	var rel_path = str(edited_scene_root.get_path_to(node)) if edited_scene_root else node.name
+	
 	var node_data = {
 		"selected": true,
 		"name": node.name,
 		"type": node.get_class(),
-		"path": str(node.get_path())
+		"path": rel_path
 	}
 	
 	# Get script info if available
