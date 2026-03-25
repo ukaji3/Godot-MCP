@@ -280,8 +280,6 @@ func _update_node_transform(client_id: int, params: Dictionary, command_id: Stri
 		updated.append("scale")
 	
 	if updated.is_empty():
-		if undo_redo:
-			undo_redo.commit_action()
 		return _send_error(client_id, "No transform properties provided", command_id)
 	
 	if undo_redo:
