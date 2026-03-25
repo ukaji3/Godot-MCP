@@ -13,7 +13,18 @@ interface GetDebugOutputParams {
 export const editorTools: MCPTool[] = [
   {
     name: 'execute_editor_script',
-    description: 'Executes arbitrary GDScript code in the Godot editor',
+    description: `Execute GDScript in the Godot editor context with access to EditorInterface, the scene tree, and all editor APIs.
+
+To return structured data, assign a Dictionary or Array to the \`result\` variable:
+  result = {"key": "value"}
+  result = [node.name for node in scene.get_children()]
+
+Available variables in the script:
+- \`scene\`: the edited scene root (get_tree().edited_scene_root)
+- \`_parent\`: the command processor node
+- \`result\`: assign a value here to return structured data
+
+print() output is captured separately in the "output" field.`,
     parameters: z.object({
       code: z.string()
         .describe('GDScript code to execute in the editor context'),
@@ -23,18 +34,12 @@ export const editorTools: MCPTool[] = [
       
       try {
         const result = await godot.sendCommand('execute_editor_script', { code });
-        
-        let outputText = 'Script executed successfully';
-        
-        if (result.output && Array.isArray(result.output) && result.output.length > 0) {
-          outputText += '\n\nOutput:\n' + result.output.join('\n');
-        }
-        
-        if (result.result) {
-          outputText += '\n\nResult:\n' + JSON.stringify(result.result, null, 2);
-        }
-        
-        return outputText;
+        return JSON.stringify({
+          success: result.success,
+          output: result.output || [],
+          result: result.result ?? null,
+          error: result.error ?? null,
+        }, null, 2);
       } catch (error) {
         throw new Error(`Script execution failed: ${(error as Error).message}`);
       }
