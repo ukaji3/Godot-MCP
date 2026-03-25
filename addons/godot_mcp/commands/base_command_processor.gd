@@ -61,17 +61,46 @@ func _get_editor_node(path: String) -> Node:
 	if not edited_scene_root:
 		return null
 		
-	# Handle absolute paths
-	if path == "/root" or path == "":
+	# Handle root references
+	if path == "/root" or path == "" or path == edited_scene_root.name:
 		return edited_scene_root
 		
+	# Strip common prefixes
 	if path.begins_with("/root/"):
 		path = path.substr(6)  # Remove "/root/"
 	elif path.begins_with("/"):
 		path = path.substr(1)  # Remove leading "/"
 	
-	# Try to find node as child of edited scene root
-	return edited_scene_root.get_node_or_null(path)
+	# Strip scene root name prefix if present (e.g. "MainScene/Player" → "Player")
+	var root_prefix = edited_scene_root.name + "/"
+	if path.begins_with(root_prefix):
+		path = path.substr(root_prefix.length())
+	elif path == edited_scene_root.name:
+		return edited_scene_root
+	
+	# 1. Exact path match
+	var node = edited_scene_root.get_node_or_null(path)
+	if node:
+		return node
+	
+	# 2. Search by node name (last segment of path)
+	var node_name = path.get_file()  # Gets last component
+	if node_name != path:
+		node = _find_node_by_name(edited_scene_root, node_name)
+		if node:
+			return node
+	
+	# 3. Recursive name search as final fallback
+	return _find_node_by_name(edited_scene_root, path)
+
+func _find_node_by_name(root: Node, node_name: String) -> Node:
+	for child in root.get_children():
+		if child.name == node_name:
+			return child
+		var found = _find_node_by_name(child, node_name)
+		if found:
+			return found
+	return null
 
 # Helper function to mark a scene as modified
 func _mark_scene_modified() -> void:
