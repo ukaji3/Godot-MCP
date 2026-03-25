@@ -13,18 +13,40 @@ interface GetDebugOutputParams {
 export const editorTools: MCPTool[] = [
   {
     name: 'execute_editor_script',
-    description: `Execute GDScript in the Godot editor context with access to EditorInterface, the scene tree, and all editor APIs.
+    description: `Execute GDScript in the Godot editor context. Runs as a @tool script with full access to editor APIs.
 
-To return structured data, assign a Dictionary or Array to the \`result\` variable:
-  result = {"key": "value"}
-  result = [node.name for node in scene.get_children()]
+## Returning data
+Assign a Dictionary or Array to \`result\` to return structured JSON:
+  result = {"nodes": [node.name for node in scene.get_children()]}
 
-Available variables in the script:
-- \`scene\`: the edited scene root (get_tree().edited_scene_root)
-- \`_parent\`: the command processor node
-- \`result\`: assign a value here to return structured data
+## Available variables
+- \`scene\` — edited scene root (get_tree().edited_scene_root)
+- \`_parent\` — the command processor node (in the editor scene tree)
+- \`result\` — assign here to return structured data
+- print() output is captured in the "output" field
 
-print() output is captured separately in the "output" field.`,
+## Key APIs accessible
+- \`EditorInterface\` — editor state, open scenes/scripts, play scene, editor settings
+- \`EditorInterface.get_selection()\` — selected nodes
+- \`EditorInterface.get_resource_filesystem()\` — project files
+- \`EditorInterface.get_editor_settings()\` — editor preferences
+- \`ProjectSettings\` — project configuration, input map
+- \`ClassDB\` — class info, instantiation
+- All Node/Resource APIs on the edited scene
+
+## Discovering available APIs
+If unsure what methods are available, introspect at runtime:
+  var methods = []
+  for m in EditorInterface.get_method_list():
+    methods.append(m.name)
+  result = methods
+
+## Common patterns
+- Connect signal: \`node.connect("pressed", callable)\`
+- Run game: \`EditorInterface.play_main_scene()\`
+- Stop game: \`EditorInterface.stop_playing_scene()\`
+- Change editor setting: \`EditorInterface.get_editor_settings().set("setting", value)\`
+- Set project setting: \`ProjectSettings.set_setting("key", value)\``,
     parameters: z.object({
       code: z.string()
         .describe('GDScript code to execute in the editor context'),
