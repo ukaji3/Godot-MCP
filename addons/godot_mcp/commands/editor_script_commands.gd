@@ -166,7 +166,7 @@ func _replace_print_calls(code: String) -> String:
 			if j < code.length() and code[j] == "(":
 				# Find matching closing paren (handle nesting)
 				var depth := 1
-				var start := j + 1
+				var start: int = j + 1
 				j += 1
 				while j < code.length() and depth > 0:
 					if code[j] == "(":

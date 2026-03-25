@@ -175,8 +175,8 @@ func _get_debug_output(client_id: int, params: Dictionary, command_id: String) -
 	if not dir:
 		return _send_error(client_id, "Cannot open log directory", command_id)
 	
-	var latest_file := ""
-	var latest_time := 0
+	var latest_file: String = ""
+	var latest_time: int = 0
 	dir.list_dir_begin()
 	var fname = dir.get_next()
 	while fname != "":
