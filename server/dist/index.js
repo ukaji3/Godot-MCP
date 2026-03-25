@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -47,6 +48,8 @@ import { FastMCP } from 'fastmcp';
 import { nodeTools } from './tools/node_tools.js';
 import { scriptTools } from './tools/script_tools.js';
 import { sceneTools } from './tools/scene_tools.js';
+import { editorTools } from './tools/editor_tools.js';
+import { docsTools } from './tools/docs_tools.js';
 import { getGodotConnection } from './utils/godot_connection.js';
 // Import resources
 import { sceneListResource, sceneStructureResource } from './resources/scene_resources.js';
@@ -68,7 +71,7 @@ function main() {
                         version: '1.0.0',
                     });
                     // Register all tools
-                    __spreadArray(__spreadArray(__spreadArray([], nodeTools, true), scriptTools, true), sceneTools, true).forEach(function (tool) {
+                    __spreadArray(__spreadArray(__spreadArray(__spreadArray(__spreadArray([], nodeTools, true), scriptTools, true), sceneTools, true), editorTools, true), docsTools, true).forEach(function (tool) {
                         server.addTool(tool);
                     });
                     // Register all resources

@@ -36,3 +36,6 @@ __pycache__/
 .~lock.*
 
 .kiro/
+
+# Documentation index (generated, large)
+server/data/
