@@ -51,8 +51,7 @@ export const sceneStructureResource: Resource<any> = {
         const godot = getGodotConnection();
         
         try {
-            // Call a command on the Godot side to get current scene structure
-            const result = await godot.sendCommand('get_current_scene_structure', {});
+            const result = await godot.sendCommand('get_full_scene_tree', {});
             
             return {
                 text: JSON.stringify(result)

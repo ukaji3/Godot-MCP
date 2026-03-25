@@ -14,22 +14,17 @@ export const scriptResource: Resource<any> = {
         const godot = getGodotConnection();
         
         try {
-            // Without parameters, this can only load a predefined script
-            // You would need to hardcode the script path here
-            const scriptPath = 'res://default_script.gd';
+            const result = await godot.sendCommand('get_current_script');
             
-            const result = await godot.sendCommand('get_script', {
-                path: scriptPath
-            });
-            
-            return {
-                text: result.content,
-                metadata: {
-                    path: result.script_path,
-                    language: scriptPath.endsWith('.gd') ? 'gdscript' : 
-                                     scriptPath.endsWith('.cs') ? 'csharp' : 'unknown'
-                }
-            };
+            if (result && result.script_found && result.content) {
+                return {
+                    text: result.content,
+                    metadata: {
+                        path: result.script_path,
+                    }
+                };
+            }
+            return { text: 'No script currently being edited' };
         } catch (error) {
             console.error('Error fetching script content:', error);
             throw error;
@@ -89,13 +84,15 @@ export const scriptMetadataResource: Resource<any> = {
     async load() {
         const godot = getGodotConnection();
         
-        // Use a fixed script path
-        let scriptPath = 'res://default_script.gd';
-        
         try {
-            // Call a command on the Godot side to get script metadata
+            // Get current script path first, then fetch metadata
+            const current = await godot.sendCommand('get_current_script');
+            if (!current || !current.script_found) {
+                return { text: JSON.stringify({ error: 'No script currently being edited' }) };
+            }
+            
             const result = await godot.sendCommand('get_script_metadata', {
-                path: scriptPath
+                path: current.script_path
             });
             
             return {

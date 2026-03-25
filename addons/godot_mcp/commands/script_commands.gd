@@ -132,6 +132,11 @@ func _edit_script(client_id: int, params: Dictionary, command_id: String) -> voi
 	file.store_string(content)
 	file = null  # Close the file
 	
+	# Refresh the filesystem so the editor picks up changes
+	var plugin = Engine.get_meta("GodotMCPPlugin")
+	if plugin:
+		plugin.get_editor_interface().get_resource_filesystem().scan()
+	
 	_send_success(client_id, {
 		"script_path": script_path
 	}, command_id)
@@ -292,10 +297,12 @@ func _create_script_template(client_id: int, params: Dictionary, command_id: Str
 	var include_input = params.get("include_input", false)
 	
 	# Generate script content
-	var content = "extends " + extends_type + "\n\n"
+	var content = ""
 	
 	if not class_name_str.is_empty():
-		content += "class_name " + class_name_str + "\n\n"
+		content += "class_name " + class_name_str + "\n"
+	
+	content += "extends " + extends_type + "\n\n"
 	
 	# Add variables section placeholder
 	content += "# Member variables here\n\n"

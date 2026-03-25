@@ -109,17 +109,17 @@ The plugin starts a WebSocket server that the MCP server connects to.
 
 | URI | Description |
 |-----|-------------|
-| `godot://scene/list` | List of project scenes |
-| `godot://scene/structure` | Current scene structure |
-| `godot://script/{path}` | Script content |
-| `godot://script/list` | List of project scripts |
-| `godot://script/metadata/{path}` | Script metadata |
-| `godot://project/structure` | Project file structure |
-| `godot://project/settings` | Project settings |
-| `godot://project/resources` | Project resources |
-| `godot://editor/state` | Editor state |
-| `godot://editor/selected_node` | Currently selected node |
-| `godot://editor/current_script` | Currently open script |
+| `godot/scenes` | List of project scenes |
+| `godot/scene/current` | Current scene tree structure |
+| `godot/script` | Currently edited script content |
+| `godot/scripts` | List of project scripts |
+| `godot/script/metadata` | Currently edited script metadata |
+| `godot/project/structure` | Project file structure |
+| `godot/project/settings` | Project settings |
+| `godot/project/resources` | Project resources |
+| `godot/editor/state` | Editor state |
+| `godot/editor/selected_node` | Currently selected node |
+| `godot/editor/current_script` | Currently open script (with metadata) |
 
 ## Changes from Upstream
 
