@@ -1,177 +1,143 @@
 # Godot MCP (Model Context Protocol)
 
-A comprehensive integration between Godot Engine and AI assistants using the Model Context Protocol (MCP). This plugin allows AI assistants to interact with your Godot projects, providing powerful capabilities for code assistance, scene manipulation, and project management.
+> Fork of [ee0pdt/Godot-MCP](https://github.com/ee0pdt/Godot-MCP) with enhanced features.
 
-## Features
+AI assistants can interact with your Godot projects through the Model Context Protocol (MCP) — creating nodes, editing scripts, manipulating scenes, and searching Godot documentation.
 
-- **Full Godot Project Access**: AI assistants can access and modify scripts, scenes, nodes, and project resources
-- **Two-way Communication**: Send project data to AI and apply suggested changes directly in the editor
-- **Command Categories**:
-  - **Node Commands**: Create, modify, and manage nodes in your scenes
-  - **Script Commands**: Edit, analyze, and create GDScript files
-  - **Scene Commands**: Manipulate scenes and their structure
-  - **Project Commands**: Access project settings and resources
-  - **Editor Commands**: Control various editor functionality
+## Architecture
 
-## Quick Setup
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/ee0pdt/godot-mcp.git
-cd godot-mcp
+```
+AI Assistant (Claude, Kiro, etc.)
+    ↕ stdio (MCP)
+Godot-MCP Server (FastMCP / TypeScript)
+    ├── Editor tools → WebSocket → Godot Editor Plugin
+    └── Doc search  → Local BM25 index (no Godot connection needed)
 ```
 
-### 2. Set Up the MCP Server
+## Setup
+
+### 1. MCP Server
 
 ```bash
-cd server
+git clone https://github.com/ukaji3/Godot-MCP.git
+cd Godot-MCP/server
 npm install
 npm run build
-# Return to project root
-cd ..
 ```
 
-### 3. Set Up Claude Desktop
+### 2. Documentation Index (optional)
 
-1. Edit or create the Claude Desktop config file:
-   ```bash
-   # For macOS
-   nano ~/Library/Application\ Support/Claude/claude_desktop_config.json
-   ```
-
-2. Add the following configuration (or use the included `claude_desktop_config.json` as a reference):
-   ```json
-   {
-	 "mcpServers": {
-	   "godot-mcp": {
-		 "command": "node",
-		 "args": [
-		   "PATH_TO_YOUR_PROJECT/server/dist/index.js"
-		 ],
-		 "env": {
-		   "MCP_TRANSPORT": "stdio"
-		 }
-	   }
-	 }
-   }
-   ```
-   > **Note**: Replace `PATH_TO_YOUR_PROJECT` with the absolute path to where you have this repository stored.
-
-3. Restart Claude Desktop
-
-### 4. Open the Example Project in Godot
-
-1. Open Godot Engine
-2. Select "Import" and navigate to the cloned repository
-3. Open the `project.godot` file
-4. The MCP plugin is already enabled in this example project
-
-## Using MCP with Claude
-
-After setup, you can work with your Godot project directly from Claude using natural language. Here are some examples:
-
-### Example Prompts
-
-```
-@mcp godot-mcp read godot://script/current
-
-I need help optimizing my player movement code. Can you suggest improvements?
+```bash
+npm run build-index -- --version stable
 ```
 
+Shallow-clones [godot-docs](https://github.com/godotengine/godot-docs), builds a BM25 search index (~37 MB), then deletes the clone. Only needed once.
+
+### 3. MCP Client Configuration
+
+Add to your MCP client config (Claude Desktop, Kiro CLI, etc.):
+
+```json
+{
+  "mcpServers": {
+    "godot-mcp": {
+      "command": "node",
+      "args": ["<PATH_TO_REPO>/server/dist/index.js"]
+    }
+  }
+}
 ```
-@mcp godot-mcp run get-scene-tree
 
-Add a cube in the middle of the scene and then make a camera that is looking at the cube.
-```
+### 4. Godot Plugin
 
-```
-@mcp godot-mcp read godot://scene/current
+To use editor tools, the plugin must be running in Godot:
 
-Create an enemy AI that patrols between waypoints and attacks the player when in range.
-```
+1. Copy `addons/godot_mcp` to your project's `addons/` directory
+2. Project > Project Settings > Plugins > Enable "Godot MCP"
 
-### Natural Language Tasks Claude Can Perform
+The plugin starts a WebSocket server that the MCP server connects to.
 
-- "Create a main menu with play, options, and quit buttons"
-- "Add collision detection to the player character"
-- "Implement a day/night cycle system"
-- "Refactor this code to use signals instead of direct references"
-- "Debug why my player character falls through the floor sometimes"
+## Available Tools
 
-## Available Resources and Commands
+### Node Commands
 
-### Resource Endpoints:
-- `godot://script/current` - The currently open script
-- `godot://scene/current` - The currently open scene
-- `godot://project/info` - Project metadata and settings
+| Tool | Description |
+|------|-------------|
+| `create_node` | Create a new node in the scene |
+| `delete_node` | Delete a node |
+| `update_node_property` | Update a single node property |
+| `update_node_transform` | Batch update position/rotation/scale (Node2D & Node3D) |
+| `get_node_properties` | Get all properties of a node |
+| `list_nodes` | List child nodes of a given path |
 
-### Command Categories:
+### Scene Commands
 
-#### Node Commands
-- `get-scene-tree` - Returns the scene tree structure
-- `get-node-properties` - Gets properties of a specific node
-- `create-node` - Creates a new node
-- `delete-node` - Deletes a node
-- `modify-node` - Updates node properties
+| Tool | Description |
+|------|-------------|
+| `get_current_scene` | Get info about the currently open scene |
+| `get_full_scene_tree` | Get the full hierarchical scene tree with types, paths, and scripts |
+| `create_scene` | Create a new scene |
+| `open_scene` | Open a scene in the editor |
+| `save_scene` | Save the current scene |
+| `get_project_info` | Get project metadata |
+| `create_resource` | Create a new resource |
 
-#### Script Commands
-- `list-project-scripts` - Lists all scripts in the project
-- `read-script` - Reads a specific script
-- `modify-script` - Updates script content
-- `create-script` - Creates a new script
-- `analyze-script` - Provides analysis of a script
+### Script Commands
 
-#### Scene Commands
-- `list-project-scenes` - Lists all scenes in the project
-- `read-scene` - Reads scene structure
-- `create-scene` - Creates a new scene
-- `save-scene` - Saves current scene
+| Tool | Description |
+|------|-------------|
+| `create_script` | Create a new GDScript file |
+| `edit_script` | Modify an existing script |
+| `get_script` | Read a script's content |
+| `create_script_template` | Generate a script from a template |
 
-#### Project Commands
-- `get-project-settings` - Gets project settings
-- `list-project-resources` - Lists project resources
+### Editor Commands
 
-#### Editor Commands
-- `get-editor-state` - Gets current editor state
-- `run-project` - Runs the project
-- `stop-project` - Stops the running project
+| Tool | Description |
+|------|-------------|
+| `execute_editor_script` | Run arbitrary GDScript in the editor |
+| `get_debug_output` | Read the latest Godot log file |
+
+### Documentation Commands (no Godot connection required)
+
+| Tool | Description |
+|------|-------------|
+| `search_godot_docs` | BM25 full-text search across Godot documentation |
+| `read_godot_doc` | Read the full content of a documentation page |
+
+### Resources
+
+| URI | Description |
+|-----|-------------|
+| `godot://scene/list` | List of project scenes |
+| `godot://scene/structure` | Current scene structure |
+| `godot://script/{path}` | Script content |
+| `godot://script/list` | List of project scripts |
+| `godot://script/metadata/{path}` | Script metadata |
+| `godot://project/structure` | Project file structure |
+| `godot://project/settings` | Project settings |
+| `godot://project/resources` | Project resources |
+| `godot://editor/state` | Editor state |
+| `godot://editor/selected_node` | Currently selected node |
+| `godot://editor/current_script` | Currently open script |
+
+## Changes from Upstream
+
+- **FastMCP v3** — Updated from v1, removed deprecated `websocket` package
+- **Debug output cleanup** — `print()` calls replaced with `printerr()`/`_log()` to prevent JSON corruption on stdio
+- **`get_debug_output`** — Read Godot log files through MCP
+- **`get_full_scene_tree`** — Recursive scene tree with scene-relative paths (no editor-internal paths)
+- **`update_node_transform`** — Batch position/rotation/scale updates for Node2D/Node3D
+- **Enhanced node resolution** — Fallback search chain: exact path → name match → recursive search
+- **`search_godot_docs` / `read_godot_doc`** — Offline Godot documentation search via BM25 index
+- **`res://` resource loading** — `_parse_property_value` correctly loads resources from `res://` paths
 
 ## Troubleshooting
 
-### Connection Issues
-- Ensure the plugin is enabled in Godot's Project Settings
-- Check the Godot console for any error messages
-- Verify the server is running when Claude Desktop launches it
-
-
-### Plugin Not Working
-- Reload Godot project after any configuration changes
-- Check for error messages in the Godot console
-- Make sure all paths in your Claude Desktop config are absolute and correct
-
-## Adding the Plugin to Your Own Godot Project
-
-If you want to use the MCP plugin in your own Godot project:
-
-1. Copy the `addons/godot_mcp` folder to your Godot project's `addons` directory
-2. Open your project in Godot
-3. Go to Project > Project Settings > Plugins
-4. Enable the "Godot MCP" plugin
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Documentation
-
-For more detailed information, check the documentation in the `docs` folder:
-
-- [Getting Started](docs/getting-started.md)
-- [Installation Guide](docs/installation-guide.md)
-- [Command Reference](docs/command-reference.md)
-- [Architecture](docs/architecture.md)
+- **Plugin not connecting**: Ensure the Godot MCP plugin is enabled in Project Settings > Plugins
+- **No documentation results**: Run `npm run build-index -- --version stable` in the `server/` directory
+- **JSON parse errors in MCP**: Check that `log_detailed` is `false` in `mcp_server.gd` (default)
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).
