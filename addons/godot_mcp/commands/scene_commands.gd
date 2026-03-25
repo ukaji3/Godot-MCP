@@ -159,11 +159,15 @@ func _get_scene_structure(client_id: int, params: Dictionary, command_id: String
 		"structure": structure
 	}, command_id)
 
-func _get_node_structure(node: Node) -> Dictionary:
+func _get_node_structure(node: Node, scene_root: Node = node) -> Dictionary:
+	var rel_path = str(scene_root.get_path_to(node))
+	if rel_path == ".":
+		rel_path = node.name
+	
 	var structure = {
 		"name": node.name,
 		"type": node.get_class(),
-		"path": node.get_path()
+		"path": rel_path
 	}
 	
 	# Get script information
@@ -173,30 +177,24 @@ func _get_node_structure(node: Node) -> Dictionary:
 	
 	# Get important properties
 	var properties = {}
-	var property_list = node.get_property_list()
-	
-	for prop in property_list:
-		var name = prop["name"]
-		# Filter to include only the most useful properties
-		if not name.begins_with("_") and name not in ["script", "children", "position", "rotation", "scale"]:
-			continue
-		
-		# Skip properties that are default values
-		if name == "position" and node.position == Vector2():
-			continue
-		if name == "rotation" and node.rotation == 0:
-			continue
-		if name == "scale" and node.scale == Vector2(1, 1):
-			continue
-		
-		properties[name] = node.get(name)
+	for prop_name in ["position", "rotation", "scale"]:
+		if prop_name in node:
+			var val = node.get(prop_name)
+			# Skip default values
+			if val is Vector2 and val == Vector2.ZERO and prop_name != "scale":
+				continue
+			if val is Vector2 and val == Vector2.ONE and prop_name == "scale":
+				continue
+			if val is float and val == 0.0:
+				continue
+			properties[prop_name] = val
 	
 	structure["properties"] = properties
 	
 	# Get children
 	var children = []
 	for child in node.get_children():
-		children.append(_get_node_structure(child))
+		children.append(_get_node_structure(child, scene_root))
 	
 	structure["children"] = children
 	

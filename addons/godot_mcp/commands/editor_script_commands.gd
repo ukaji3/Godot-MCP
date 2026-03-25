@@ -154,25 +154,43 @@ func _on_script_execution_completed(script_node: Node, client_id: int, command_i
 
 # Replace print() calls with custom_print() in the user code
 func _replace_print_calls(code: String) -> String:
-	var regex = RegEx.new()
-	# Match print statements with any content inside the parentheses
-	regex.compile("print\\s*\\(([^\\)]+)\\)")
-	
-	var result = regex.search_all(code)
-	var modified_code = code
-	
-	# Process matches in reverse order to avoid issues with changing string length
-	for i in range(result.size() - 1, -1, -1):
-		var match_obj = result[i]
-		var full_match = match_obj.get_string()
-		var arg_content = match_obj.get_string(1)
-		
-		# Create an array with all arguments
-		var replacement = "custom_print([" + arg_content + "])"
-		
-		var start = match_obj.get_start()
-		var end = match_obj.get_end()
-		
-		modified_code = modified_code.substr(0, start) + replacement + modified_code.substr(end)
-	
-	return modified_code
+	var result := ""
+	var i := 0
+	while i < code.length():
+		# Check for "print" followed by optional whitespace and "("
+		if code.substr(i, 5) == "print" and (i == 0 or not code[i - 1].is_valid_identifier()):
+			var j = i + 5
+			# Skip whitespace
+			while j < code.length() and code[j] == " ":
+				j += 1
+			if j < code.length() and code[j] == "(":
+				# Find matching closing paren (handle nesting)
+				var depth := 1
+				var start := j + 1
+				j += 1
+				while j < code.length() and depth > 0:
+					if code[j] == "(":
+						depth += 1
+					elif code[j] == ")":
+						depth -= 1
+					elif code[j] == '"':
+						j += 1
+						while j < code.length() and code[j] != '"':
+							if code[j] == "\\":
+								j += 1
+							j += 1
+					elif code[j] == "'":
+						j += 1
+						while j < code.length() and code[j] != "'":
+							if code[j] == "\\":
+								j += 1
+							j += 1
+					j += 1
+				if depth == 0:
+					var args = code.substr(start, j - 1 - start)
+					result += "custom_print([" + args + "])"
+					i = j
+					continue
+		result += code[i]
+		i += 1
+	return result

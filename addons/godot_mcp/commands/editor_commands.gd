@@ -140,7 +140,7 @@ func _create_resource(client_id: int, params: Dictionary, command_id: String) ->
 	
 	# Set properties
 	for key in properties:
-		resource.set(key, properties[key])
+		resource.set(key, _parse_property_value(properties[key]))
 	
 	# Create directory if needed
 	var dir = resource_path.get_base_dir()

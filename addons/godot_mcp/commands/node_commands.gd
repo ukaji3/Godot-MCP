@@ -72,7 +72,7 @@ func _create_node(client_id: int, params: Dictionary, command_id: String) -> voi
 	_mark_scene_modified()
 	
 	_send_success(client_id, {
-		"node_path": parent_path + "/" + node_name
+		"node_path": str(edited_scene_root.get_path_to(node))
 	}, command_id)
 
 func _delete_node(client_id: int, params: Dictionary, command_id: String) -> void:
@@ -211,12 +211,15 @@ func _list_nodes(client_id: int, params: Dictionary, command_id: String) -> void
 		return _send_error(client_id, "Parent node not found: %s" % parent_path, command_id)
 	
 	# Get children
+	var plugin = Engine.get_meta("GodotMCPPlugin")
+	var scene_root = plugin.get_editor_interface().get_edited_scene_root() if plugin else null
 	var children = []
 	for child in parent.get_children():
+		var child_path = str(scene_root.get_path_to(child)) if scene_root else child.name
 		children.append({
 			"name": child.name,
 			"type": child.get_class(),
-			"path": str(child.get_path()).replace(str(parent.get_path()), parent_path)
+			"path": child_path
 		})
 	
 	_send_success(client_id, {
@@ -233,37 +236,56 @@ func _update_node_transform(client_id: int, params: Dictionary, command_id: Stri
 	if not node:
 		return _send_error(client_id, "Node not found: %s" % node_path, command_id)
 	
+	if not (node is Node2D or node is Node3D):
+		return _send_error(client_id, "Node is not Node2D or Node3D: %s (%s)" % [node_path, node.get_class()], command_id)
+	
+	var undo_redo = _get_undo_redo()
 	var updated := []
+	
+	if undo_redo:
+		undo_redo.create_action("Update Transform: " + node_path)
 	
 	if params.has("position"):
 		var pos = params["position"]
-		if node is Node2D:
-			node.position = Vector2(pos[0], pos[1])
-		elif node is Node3D:
-			node.position = Vector3(pos[0], pos[1], pos[2])
+		if undo_redo:
+			undo_redo.add_do_property(node, "position", Vector2(pos[0], pos[1]) if node is Node2D else Vector3(pos[0], pos[1], pos[2]))
+			undo_redo.add_undo_property(node, "position", node.position)
+		else:
+			node.position = Vector2(pos[0], pos[1]) if node is Node2D else Vector3(pos[0], pos[1], pos[2])
 		updated.append("position")
 	
 	if params.has("rotation"):
 		var rot = params["rotation"]
+		var new_rot
 		if node is Node2D:
-			node.rotation = rot
-		elif node is Node3D:
-			if rot is Array:
-				node.rotation = Vector3(rot[0], rot[1], rot[2])
-			else:
-				node.rotation = Vector3(rot, 0, 0)
+			new_rot = float(rot)
+		elif rot is Array:
+			new_rot = Vector3(rot[0], rot[1], rot[2])
+		else:
+			new_rot = Vector3(float(rot), 0, 0)
+		if undo_redo:
+			undo_redo.add_do_property(node, "rotation", new_rot)
+			undo_redo.add_undo_property(node, "rotation", node.rotation)
+		else:
+			node.rotation = new_rot
 		updated.append("rotation")
 	
 	if params.has("scale"):
 		var scl = params["scale"]
-		if node is Node2D:
-			node.scale = Vector2(scl[0], scl[1])
-		elif node is Node3D:
-			node.scale = Vector3(scl[0], scl[1], scl[2])
+		if undo_redo:
+			undo_redo.add_do_property(node, "scale", Vector2(scl[0], scl[1]) if node is Node2D else Vector3(scl[0], scl[1], scl[2]))
+			undo_redo.add_undo_property(node, "scale", node.scale)
+		else:
+			node.scale = Vector2(scl[0], scl[1]) if node is Node2D else Vector3(scl[0], scl[1], scl[2])
 		updated.append("scale")
 	
 	if updated.is_empty():
+		if undo_redo:
+			undo_redo.commit_action()
 		return _send_error(client_id, "No transform properties provided", command_id)
+	
+	if undo_redo:
+		undo_redo.commit_action()
 	
 	_mark_scene_modified()
 	_send_success(client_id, {

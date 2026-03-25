@@ -188,19 +188,16 @@ func _process(_delta):
 						# Handle other MCP commands
 						elif data.has("method"):
 							var method_name = data.get("method")
-							var params = data.get("params", {})
 							var req_id = data.get("id")
 							
 							_log(id, "JSON-RPC method: " + method_name)
 							
-							# For now, just send a generic success response
-							# TODO: Route these to command handler as well
 							var response = {
 								"jsonrpc": "2.0",
 								"id": req_id,
-								"result": {
-									"status": "success",
-									"message": "Command processed"
+								"error": {
+									"code": -32601,
+									"message": "Method not found: " + method_name
 								}
 							}
 							

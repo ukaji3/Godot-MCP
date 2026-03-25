@@ -68,6 +68,7 @@ export class GodotConnection {
         });
         
         this.ws.on('open', () => {
+          clearTimeout(connectionTimeout);
           this.connected = true;
           console.error('Connected to Godot WebSocket server');
           resolve();
@@ -76,7 +77,6 @@ export class GodotConnection {
         this.ws.on('message', (data: Buffer) => {
           try {
             const response: GodotResponse = JSON.parse(data.toString());
-            console.error('Received response:', response);
             
             // Handle command responses
             if ('commandId' in response) {
@@ -123,10 +123,6 @@ export class GodotConnection {
             reject(new Error('Connection timeout'));
           }
         }, this.timeout);
-        
-        this.ws.on('open', () => {
-          clearTimeout(connectionTimeout);
-        });
       });
     };
     
