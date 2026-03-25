@@ -161,4 +161,34 @@ export const nodeTools: MCPTool[] = [
       }
     },
   },
+
+  {
+    name: 'update_node_transform',
+    description: 'Update position, rotation, and/or scale of a Node2D or Node3D in one call',
+    parameters: z.object({
+      node_path: z.string()
+        .describe('Path to the node (e.g. "/root/MainScene/Player")'),
+      position: z.array(z.number()).optional()
+        .describe('Position as [x, y] for Node2D or [x, y, z] for Node3D'),
+      rotation: z.union([z.number(), z.array(z.number())]).optional()
+        .describe('Rotation in radians. Number for Node2D, [x, y, z] for Node3D'),
+      scale: z.array(z.number()).optional()
+        .describe('Scale as [x, y] for Node2D or [x, y, z] for Node3D'),
+    }),
+    execute: async ({ node_path, position, rotation, scale }: any): Promise<string> => {
+      const godot = getGodotConnection();
+      
+      try {
+        const params: any = { node_path };
+        if (position !== undefined) params.position = position;
+        if (rotation !== undefined) params.rotation = rotation;
+        if (scale !== undefined) params.scale = scale;
+        
+        const result = await godot.sendCommand<CommandResult>('update_node_transform', params);
+        return `Updated ${result.updated.join(', ')} of node at ${node_path}`;
+      } catch (error) {
+        throw new Error(`Failed to update transform: ${(error as Error).message}`);
+      }
+    },
+  },
 ];

@@ -13,6 +13,9 @@ func process_command(client_id: int, command_type: String, params: Dictionary, c
 		"update_node_property":
 			_update_node_property(client_id, params, command_id)
 			return true
+		"update_node_transform":
+			_update_node_transform(client_id, params, command_id)
+			return true
 		"get_node_properties":
 			_get_node_properties(client_id, params, command_id)
 			return true
@@ -219,4 +222,51 @@ func _list_nodes(client_id: int, params: Dictionary, command_id: String) -> void
 	_send_success(client_id, {
 		"parent_path": parent_path,
 		"children": children
+	}, command_id)
+
+func _update_node_transform(client_id: int, params: Dictionary, command_id: String) -> void:
+	var node_path = params.get("node_path", "")
+	if node_path.is_empty():
+		return _send_error(client_id, "Node path cannot be empty", command_id)
+	
+	var node = _get_editor_node(node_path)
+	if not node:
+		return _send_error(client_id, "Node not found: %s" % node_path, command_id)
+	
+	var updated := []
+	
+	if params.has("position"):
+		var pos = params["position"]
+		if node is Node2D:
+			node.position = Vector2(pos[0], pos[1])
+		elif node is Node3D:
+			node.position = Vector3(pos[0], pos[1], pos[2])
+		updated.append("position")
+	
+	if params.has("rotation"):
+		var rot = params["rotation"]
+		if node is Node2D:
+			node.rotation = rot
+		elif node is Node3D:
+			if rot is Array:
+				node.rotation = Vector3(rot[0], rot[1], rot[2])
+			else:
+				node.rotation = Vector3(rot, 0, 0)
+		updated.append("rotation")
+	
+	if params.has("scale"):
+		var scl = params["scale"]
+		if node is Node2D:
+			node.scale = Vector2(scl[0], scl[1])
+		elif node is Node3D:
+			node.scale = Vector3(scl[0], scl[1], scl[2])
+		updated.append("scale")
+	
+	if updated.is_empty():
+		return _send_error(client_id, "No transform properties provided", command_id)
+	
+	_mark_scene_modified()
+	_send_success(client_id, {
+		"node_path": node_path,
+		"updated": updated
 	}, command_id)
