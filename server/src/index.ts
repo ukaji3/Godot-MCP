@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { FastMCP } from 'fastmcp';
 import { nodeTools } from './tools/node_tools.js';
-import { scriptTools } from './tools/script_tools.js';
 import { sceneTools } from './tools/scene_tools.js';
 import { editorTools } from './tools/editor_tools.js';
 import { docsTools } from './tools/docs_tools.js';
@@ -13,9 +12,7 @@ import {
   sceneStructureResource 
 } from './resources/scene_resources.js';
 import { 
-  scriptResource, 
-  scriptListResource,
-  scriptMetadataResource 
+  scriptListResource
 } from './resources/script_resources.js';
 import { 
   projectStructureResource,
@@ -41,7 +38,7 @@ async function main() {
   });
 
   // Register all tools
-  [...nodeTools, ...scriptTools, ...sceneTools, ...editorTools, ...docsTools].forEach(tool => {
+  [...nodeTools, ...sceneTools, ...editorTools, ...docsTools].forEach(tool => {
     server.addTool(tool);
   });
 
@@ -56,8 +53,6 @@ async function main() {
   server.addResource(selectedNodeResource);
   server.addResource(currentScriptResource);
   server.addResource(sceneStructureResource);
-  server.addResource(scriptResource);
-  server.addResource(scriptMetadataResource);
 
   // Try to connect to Godot
   try {
